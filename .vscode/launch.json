@@ -1,0 +1,78 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "TableSync: evaluate 10 relay seeds",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/evaluate_relay.py",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "TableSync: shared object table relay",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/relay_demo.py",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "TableSync: both arms pick and place",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/bimanual_demo.py",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "TableSync: pick and place",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/place_demo.py",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "TableSync: physical grasp and lift",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/grasp_demo.py",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "TableSync: shared target reach",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/reach_demo.py",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "TableSync: two SO-101 arms",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/dual_arm_demo.py",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "TableSync: view first scene",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/check_setup.py",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["--view"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+.venv/
+.venv-train/
+outputs/
+__pycache__/
+*.pyc
+proposal_work/
+artifacts/
+data/
+.~lock.*
+vendor/mujoco_menagerie/
+MUJOCO_LOG.TXT
+kernel.errors.txt
+.env
+.env.*
+!.env.example
