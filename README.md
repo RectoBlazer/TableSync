@@ -1,343 +1,139 @@
-# TableSync
+# TableSync — teammate handoff and submission plan
 
-Current milestone: a **training trajectory reference + ACT residual controller passed 10/10 reserved two-arm table-relay trials**, with no monitored collision stops. The original direct-action ACT policy still needs improvement. See [results, limitations and viewer commands](docs/GRASP_RESULTS.md).
+TableSync is our entry for the **AI Infra Summit Hackathon, Intel Physical AI Online Challenge**. The intended demo is a language-and-vision-driven dinner-table workflow in MuJoCo, using two simulated SO-101 robot arms and OpenVINO inference on Intel hardware.
 
-The reference trajectory alone also passed 10/10: these results do not yet show a
-task-success benefit from ACT's learned corrections.
+**Current position:** we have a working two-arm manipulation baseline, training and evaluation tooling, and a hybrid controller that completed 10/10 reserved table-relay trials. We do **not** yet have the complete dinner-table task, multimodal planner, dashboard, OpenVINO policy deployment or submission video.
 
-## Hackathon training-data pipeline
+We are continuing development and benchmarking on the available **Intel Core i9-12900H and Iris Xe iGPU**. The NVIDIA RTX 3070 Ti Laptop GPU is used for training and the current PyTorch policy runs. Label the actual hardware accurately; no Core Ultra or NPU results have been produced.
 
-The first implementation step beyond the exercises is synchronized demonstration
-collection. See [the dataset guide](docs/DATASET.md) for format, commands and limits.
+## What has been built
 
-```powershell
-.\.venv\Scripts\python.exe scripts\collect_demonstrations.py
-.\.venv\Scripts\python.exe scripts\validate_demonstrations.py
-```
+The project progressed from basic simulation checks to physical grasping, placement, two-arm coordination, demonstration collection and learned-policy experiments.
 
-The collector records a small pilot at `data/relay_pilot/` and refuses to overwrite
-it. If the pilot already exists, run just the validator. A different output path
-creates another run. The pilot has also been exported to `data/lerobot_relay_pilot/`.
-See [the ACT training guide](docs/TRAINING.md) for the isolated training environment,
-export verification, GPU training command and checkpoint files.
+| Component | Implemented and verified |
+| --- | --- |
+| Simulation | Two SO-101 arms in MuJoCo, with physical gripper contacts and a movable block. Objects are not attached to the grippers with artificial welds. |
+| Scripted expert | Arm A picks up a block and places it in a shared transfer area; Arm B picks up the same block and returns it to the final location. |
+| Coordination checks | Ordered grasp/lift/placement milestones, plus inter-arm and arm-table collision stops. A stationary block cannot pass the success test. |
+| Demonstrations | Six training and two validation episodes: 24,000 frames of images, joint observations and action targets. Action replay and LeRobot export checks passed. |
+| Policy training | LeRobot ACT training, saved checkpoints/processors, validation metrics and multiple grasp-improvement experiments. |
+| Working controller | A mean trajectory computed from training demonstrations, plus small learned ACT corrections from RGB, joint angles and elapsed task time. |
+| Evaluation | Per-seed results, physical milestone timestamps, joint/action traces, object trajectories and final camera images. |
+| Intel setup | OpenVINO installation and basic inference checks on the available machine. Robotics-model deployment through OpenVINO is still pending. |
 
-## First exercise
+### What the results actually establish
 
-In PowerShell:
+| Controller | Result |
+| --- | --- |
+| Original direct-action ACT | Still unreliable; more training reduced prediction error without producing a reliable complete relay. |
+| Selected hybrid: training reference + ACT corrections | **4/4 development trials, then 10/10 reserved trials**, with no monitored collision stops. |
+| Training reference alone | **10/10 on the same reserved seeds**. No task-success benefit from ACT corrections has been established. |
 
-```powershell
-Set-Location 'C:\Users\ASUS\OneDrive\Bureau\AI-Infra'
-.\.venv\Scripts\python.exe scripts\check_setup.py
-.\.venv\Scripts\python.exe scripts\check_setup.py --view
-```
+The current success is a **table-supported block relay**, not an airborne hand-off or a complete dinner-table workflow. Randomization is modest: initial XY placement ±3 mm, mass 30–50 g and sliding friction 0.8–1.2. Object shape, lighting, background and camera remain fixed. The controller uses a task clock; recovery after a failed grasp or moved object is not established.
 
-The first command tests a falling cube and a tiny OpenVINO calculation on available CPU/GPU devices. This is an installation check, not a robotics benchmark.
+Actions execute at 50 Hz of simulation time, with a new prediction every 10 actions. This is not a measured OpenVINO real-time performance claim.
 
-The second command opens the scene. Close the viewer window when finished. Run it again to restart the falling cube.
+Detailed evidence: [grasp results](docs/GRASP_RESULTS.md), [experiment history](docs/GRASP_EXPERIMENTS.md), [dataset guide](docs/DATASET.md), [training guide](docs/TRAINING.md), and [closed-loop evaluator](docs/CLOSED_LOOP.md).
 
-## What each part means
+## Ownership for the two-person team
 
-- `.venv`: isolated Python packages for this project.
-- `scenes/first_scene.xml`: MuJoCo scene description. The cube begins 0.4 meters above the floor; its half-size is 0.04 meters.
-- `scripts/check_setup.py`: advances physics in 0.002-second steps and checks the inference runtime.
-- OpenVINO: executes model calculations on Intel hardware. It does not simulate physics or train the policy in this exercise.
+### Project lead — robotics, backend and Intel deployment
 
-## Hardware boundary
+The project lead, working with Codex, owns:
 
-Local development machine: Intel Core i9-12900H, Iris Xe graphics, NVIDIA RTX 3070 Ti Laptop GPU with 8 GB VRAM. This is not the Core Ultra Series 2/3 machine specified for the final demo in the supplied challenge brief. Final demonstration hardware access remains unresolved.
+1. A small backend interface around the simulator/controller: start, stop, status, camera frames and results.
+2. Extending the relay into a coherent dinner-table workflow with multiple placements and an explicit transfer or complementary two-arm action.
+3. Language-and-camera reasoning that interprets instructions, chooses actions and checks task progress.
+4. OpenVINO conversion, inference integration and Intel CPU/iGPU benchmarking.
+5. Final randomization, ten-seed evaluation, model packaging and technical documentation.
 
-## Second exercise
+### Teammate — dashboard, demo recording and submission presentation
 
-```powershell
-.\.venv\Scripts\python.exe scripts\dual_arm_demo.py
-```
+**Your first task is the local demo dashboard. You do not need to train models or install the robotics stack to start.**
 
-Or use the VS Code Run and Debug configuration **TableSync: two SO-101 arms**.
-The program builds `scenes/dual_so101.xml` from the licensed upstream model and opens
-the viewer. Arm A turns its base and opens its gripper, returns, then arm B repeats.
-The cycle lasts ten simulated seconds. Close the viewer to stop.
+Build a simple interface with:
 
-To check without a window:
+- A natural-language command input and Start/Stop controls.
+- A simulation camera feed.
+- The interpreted plan, current step and Arm A / Arm B activity.
+- Clear idle, running, succeeded, failed and stopped states, including collision-stop messages.
+- A ten-seed results table that includes failures.
+- A benchmark panel showing hardware, runtime/device, model precision and measured latency/throughput.
 
-```powershell
-.\.venv\Scripts\python.exe scripts\dual_arm_demo.py --check
-```
+Start with **clearly labeled mock data**. Keep backend communication in one adapter so sample responses can be replaced without rewriting the UI. Do not add authentication, a database or cloud deployment. Do not display fabricated reasoning or benchmark numbers as live results.
 
-The check covers finite joint positions, tracking error and arm-to-arm contacts for
-this one trajectory. It does not validate grasping, shared reach or general collision
-avoidance. See `vendor/README.md` for the pinned asset version and license.
+After the dashboard is connected, own the recording and editing of the demo video, screenshots, presentation copy and preparation of the submission form. The project lead supplies the verified technical claims and results.
 
-### Concepts to learn
+If helping with backend integration, own the dashboard adapter and presentation of incoming status. Keep simulator control, model inference and success scoring with the project lead to avoid overlapping edits.
 
-- A **joint** permits relative movement between robot links. Here it rotates.
-- An **actuator** applies forces to drive a joint toward its target angle.
-- `data.ctrl` contains the target angles for these position actuators.
-- `data.qpos` contains the actual joint angles resulting from physics.
-- Angles are in **radians**: 0.25 rad is approximately 14 degrees.
-- Each arm has five positioning joints plus one gripper joint, for 12 controls total.
+## Interface we need to agree on first
 
-Read the `targets(t)` function first. It changes only the shoulder-pan and gripper
-targets while the other targets remain at `HOME`. This is programmed motion, not AI.
-The base layout is a lesson setup; shared reach and transfer geometry come next.
+**This contract is proposed; a backend API is not implemented yet.** Agree on the payloads before building transport-specific UI code.
 
-## Next milestone
+| Operation | Minimum information |
+| --- | --- |
+| Start | Instruction and seed; backend returns a run ID or a clear error. |
+| Stop | Run ID; backend acknowledges whether the run has stopped. |
+| Status | Run ID, state, interpreted plan, current step, arm activity and errors. |
+| Camera | Latest simulated camera frame associated with the run. |
+| Result | Seed, success/failure, verified milestones and collision-stop information. |
+| Benchmark | Actual hardware, model/component, device, precision, latency, throughput and measurement conditions. |
 
-Extend the validated grasp to placement targets and both arms before attempting a
-handoff. Training follows successful scripted demonstrations.
+Mock runs should cover success, failure, stopping and a disconnected backend. Display the observed plan and status supplied by the backend; do not infer successful manipulation from animation timing.
 
-## Third exercise
+## Remaining work before submission, in order
 
-```powershell
-.\.venv\Scripts\python.exe scripts\reach_demo.py
-```
+| Priority | Work | Owner | Completion condition |
+| --- | --- | --- | --- |
+| 1 | Confirm the submission cutoff, form fields and video constraints; agree on the interface above. | Both | One shared checklist and agreed sample payloads. |
+| 2 | Implement the backend wrapper and dashboard in parallel. | Lead: backend; teammate: UI | Real start/stop, camera and status work through the dashboard. |
+| 3 | Complete a small dinner-table workflow with meaningful two-arm coordination. | Lead | Multiple task steps, explicit transfer/complementary action, shared-workspace sequencing and verified final placement. |
+| 4 | Integrate genuine language-and-vision reasoning. | Lead | The instruction and camera observations influence the plan; state checks govern progression. |
+| 5 | Integrate OpenVINO and benchmark Intel CPU/iGPU. | Lead | Actual supported model components run through OpenVINO; task behavior and performance are measured. |
+| 6 | Freeze the integrated system and evaluate ten fresh randomized seeds. | Lead | Reports cover the final task and inference runtime, including failures. Existing relay results cannot substitute for this test. |
+| 7 | Record and edit the final demo. | Teammate, with lead operating/debugging | Command, scene variation, both arms, outcomes and actual benchmark results are visible. |
+| 8 | Test reproducibility and complete submission materials. | Lead: technical package; teammate: presentation/form preparation | A fresh setup can reproduce the demo; every submitted link works. |
 
-VS Code configuration: **TableSync: shared target reach**.
-Arm B now faces inward. Green marks a target at `[0, 0, 0.20]` meters in table/world
-coordinates; blue and orange mark A and B's gripper reference points. The green marker
-is a visual site, not a physical ball. A reference marker may be hidden inside the green
-marker when it reaches the target.
+The dashboard can be built while robotics and inference work continue. Recording depends on the integrated system and verified results. If dashboard integration slips, record the simulator with a simple command/status panel rather than delay the whole submission.
 
-Each arm approaches for four seconds, holds for two, returns for four, then rests for
-two. The full cycle takes 24 simulated seconds. Console messages identify each phase.
+For this deadline, defer further standalone-ACT training, fluid simulation, broad object libraries, elaborate UI polish and NPU/INT8 experiments unless the complete submission path already works. Quantization is useful only if supported and task quality is preserved.
 
-`inverse_kinematics()` finds joint angles from a desired 3D position using MuJoCo's
-site Jacobian. It works on scratch simulation data; live motion still uses actuators.
-`schedule()` sends smoothly changing joint targets, leaving the other arm at home.
-This is a fixed turn-taking schedule, not a general dynamic workspace planner.
+## Submission package and video
 
-```powershell
-.\.venv\Scripts\python.exe scripts\reach_demo.py --check --snapshot
-```
+The challenge brief lists five required deliverables:
 
-Checks: each held reference point is within 5 mm, no inter-arm or arm-table penetration
-on the tested trajectory, and finite joint positions. The initial run achieved less
-than 0.6 mm error for both arms. Metrics and a rendered image are saved in `artifacts/`.
-Unreachable targets cause an error rather than being silently accepted.
+- **Reproducible GitHub repository:** setup, dependencies, scene/assets, training, inference, evaluation and demo commands.
+- **Reproducible MuJoCo simulation:** the final dual-arm scenario and its randomization/evaluation configuration.
+- **Intel inference benchmark script:** device selection, precision, latency and throughput on the actual available hardware. Document any difference from the brief's stated target hardware.
+- **Demonstration video:** successful execution evidence across ten randomized seeds, with commands, scene variations and outcomes easy to verify.
+- **Technical README / architecture summary:** model choices, coordination, training, robustness, OpenVINO optimization and hardware mapping.
 
-This lesson solves **position only**. It does not control the gripper orientation,
-prove grasp reachability, evaluate all self-collisions, or implement object transfer.
-The target should remain unchanged until grasp geometry and path validation are added.
+Also package or provide download instructions for required model weights, processors, trajectory references and robot assets. Include licenses and saved evaluation/benchmark reports. Check the submission portal for additional fields, access requirements and video limits; those have not been confirmed here.
 
-## Fourth exercise
+Suggested video sequence: problem and command → initial scene → visible perception/plan → one complete two-arm workflow → labeled montage of all ten seeds → results and Intel/OpenVINO benchmark. Label accelerated footage and distinguish reference motion from learned corrections. Do not claim that the current hybrid outperforms its reference-only baseline.
 
-```powershell
-.\.venv\Scripts\python.exe scripts\grasp_demo.py
-```
+## Repository map and teammate starting point
 
-VS Code configuration: **TableSync: physical grasp and lift**. The sequence runs once
-in about 19 simulated seconds; the viewer remains open afterward. Restart to repeat.
+| Location | Purpose |
+| --- | --- |
+| `scripts/` | Simulation, expert control, data collection, training, evaluation and viewer launcher. |
+| `scenes/` | MuJoCo scene files. |
+| `tests/` | Regression checks, including ordered task-success scoring. |
+| `docs/` | Dataset/training instructions and experiment evidence. |
+| `vendor/README.md` | Robot asset provenance and version information. |
+| `requirements-setup.txt` | Simulation/OpenVINO setup dependencies. |
+| `requirements-training-lock.txt` | Training-environment dependency snapshot. |
 
-Arm A starts above a 40 g blue block, approaches with open jaws, closes, confirms
-contact on both jaws, lifts, holds for three seconds, lowers, opens and retreats.
-Arm B remains parked. This tests the grasp building block, not the full bimanual task.
+**A Git clone does not include the local training environment, datasets, checkpoints, result artifacts or downloaded robot asset tree.** These are excluded by `.gitignore`. Links in the experiment documents to `data/`, `outputs/` and `artifacts/` describe files on the development machine, not files automatically delivered by GitHub.
 
-The object has a free joint: gravity, contact and friction determine its motion.
-There are no equality welds or runtime object-pose assignments. Initialization places
-the robot in a pregrasp configuration; subsequent motion is actuator-driven.
+For the teammate: create a `demo-dashboard` branch, start the UI in a dedicated `frontend/` directory, add its own setup instructions, and work against labeled sample responses. The `frontend/` directory is a planned addition, not an existing application. Use small commits and coordinate changes to shared interfaces before merging.
 
-### Read the code
-
-- `make_model()`: adds the block and contact settings to the two-arm scene.
-- `pose_ik()`: seeks a position while also keeping the selected gripper orientation.
-- `plan()`: defines approach, close, lift, hold, lower, release and retreat targets.
-- `grip_contacts()`: checks actual normal contact forces against both jaws.
-- `run()`: sends targets through physics and checks outcomes.
-
-The initial pickup pose and block orientation are adapted from the upstream model's
-`scene_box.xml` example. The chosen 4 cm gripper lift respects wrist limits; a 12 cm
-vertical lift with the same orientation did not solve. Object center rise is about
-3.7 cm after grasp settling. The block dimensions are 4 by 4 by 6 cm, with its initial
-orientation putting a 4 cm dimension vertically.
-
-### Contact model settings and limitations
-
-Gripper torque is limited to +/-0.3 Nm, with position gain 20 and velocity gain 1.
-Jaw geometry and original friction are retained. This scene uses 50 main solver
-iterations and 5 NoSlip iterations to suppress soft-contact drift. NoSlip is MuJoCo
-contact post-processing, not an object attachment; results still depend on the
-chosen simulation settings and are not hardware validation.
-Reference: https://mujoco.readthedocs.io/en/latest/modeling.html
+To watch the current hybrid on the development machine, where the environment, robot assets and checkpoint are present:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\grasp_demo.py --check --snapshot
+.\scripts\watch_learned_relay.ps1
 ```
 
-The check requires confirmed two-jaw contact before lift, block center above 5 cm
-throughout the three-second hold, two-jaw contact during more than 90% of hold samples,
-less than 2 mm hold-height drift, no inter-arm or arm-table penetration, and release
-onto the table. The initial passing run had 100% two-jaw hold contact and less than
-0.01 mm height drift. A negative control with the gripper left open was rejected
-before lift. Metrics and the lifted snapshot are stored in `artifacts/`.
+See [the results guide](docs/GRASP_RESULTS.md) for the direct Python command and required checkpoint files. A fresh clone needs those dependencies and assets before this launcher will work.
 
-This is one known object pose and a scripted sequence using simulator contact
-information. It does not establish randomized grasp success, camera-based grasp
-selection, learned control, or a bimanual transfer.
-
-## Fifth exercise
-
-```powershell
-.\.venv\Scripts\python.exe scripts\place_demo.py
-```
-
-VS Code configuration: **TableSync: pick and place**. The sequence takes about
-23 simulated seconds and runs once. Arm A grasps the block, raises it, carries it
-4 cm toward the table center, holds, lowers until table support is confirmed,
-opens and retreats. The green square is a nonphysical destination marker.
-
-`OFFSET` defines the desired displacement; `plan()` inserts the carry and placement
-poses into the existing grasp skill. `require_table_support()` checks contact force
-before opening. `assess_placement()` checks the object's final center, not just the
-robot's commanded position. Leave the offset unchanged until the new path is tested.
-
-```powershell
-.\.venv\Scripts\python.exe scripts\place_demo.py --check --snapshot
-```
-
-The initial run finished 10.3 mm from the destination center (15 mm tolerance),
-42.5 mm from its starting center, with confirmed table contact before release.
-The placement check rejects a block left at its starting position. The established
-grasp checks still apply, and results are written to `artifacts/place_check.json`.
-
-This remains a scripted skill for a known initial pose, with Arm B parked. The next
-integration step is to give Arm B a validated manipulation skill and sequence both
-arms toward a multi-step task. These lessons do not yet constitute the hackathon MVP.
-
-## Sixth exercise
-
-```powershell
-.\.venv\Scripts\python.exe scripts\bimanual_demo.py
-```
-
-VS Code configuration: **TableSync: both arms pick and place**. The sequence runs once
-in about 52 simulated seconds; the viewer remains open afterward.
-
-Arm A picks up the blue block, places it at its green marker and parks. Arm B then
-does the same with the orange block. The second arm uses the same local joint skill
-with its base and object rotated 180 degrees. Both objects move through simulated
-contact and friction.
-
-The controller confirms two-jaw contact before lifting and table support before
-release. It checks each placement and checks both again after Arm B finishes.
-Only one arm moves at a time: this is a fixed conservative sequence, not a general
-shared-workspace planner or a hand-off.
-
-```powershell
-.\.venv\Scripts\python.exe scripts\bimanual_demo.py --check --snapshot
-```
-
-The initial run placed both blocks within 10.4 mm of their targets (15 mm tolerance),
-with two-jaw contact throughout carry/hold and no detected inter-arm or arm-table
-penetration. These checks cover the tested trajectory, not all possible collisions.
-Metrics are saved to `artifacts/bimanual_check.json`; images show each held block
-and the final scene. This remains scripted control with known object poses.
-Shared-object transfer, language/camera reasoning, learned control, OpenVINO policy
-deployment and randomized evaluation remain to be implemented.
-
-## Seventh exercise
-
-```powershell
-.\.venv\Scripts\python.exe scripts\relay_demo.py
-```
-
-VS Code configuration: **TableSync: shared object table relay**. Runs once in about
-60 simulated seconds. A carries the blue block to the green transfer marker and
-parks. B then grasps that same block and returns it to the orange-marked start area.
-This scene places B closer to the transfer station; earlier exercise scenes retain
-their original layout. There is one free object, with no runtime pose assignments
-or welds.
-
-B can begin only after the block has table support, A has released it, and A's joints
-are within 0.08 radians of the parked pose. B corrects its pickup targets using the
-measured object XY position and inverse kinematics. This uses simulator ground truth,
-not camera perception. The uncorrected nominal pickup failed the grasp gate because
-A's placement settled roughly 1 cm off-center.
-
-```powershell
-.\.venv\Scripts\python.exe scripts\relay_demo.py --check --snapshot
-```
-
-The passing run achieved 10.3 mm transfer placement error and 1.7 mm final placement
-error, with two-jaw contact throughout both carry/hold phases. No inter-arm or
-arm-table penetration was detected on this trajectory. Metrics are saved in
-`artifacts/relay_check.json`, with snapshots of each arm holding the same object.
-
-This is a table-supported relay, **not an airborne hand-off**. It demonstrates
-dependent task sequencing, measured pickup correction and exclusive access to the
-transfer area. General collision avoidance, direct hand-off, camera/language input,
-learned policies and randomized robustness remain outstanding.
-
-## Eighth exercise: measure reliability
-
-```powershell
-.\.venv\Scripts\python.exe scripts\evaluate_relay.py
-```
-
-VS Code configuration: **TableSync: evaluate 10 relay seeds**. This runs without a
-viewer, prints one PASS/FAIL line per trial and saves a report after every trial.
-Each seed reproducibly selects an independent starting XY offset within +/-3 mm,
-a block mass between 30 and 50 g, and block sliding friction between 0.8 and 1.2.
-The model compiler recalculates object inertia for the selected mass. Jaw friction,
-object orientation, lighting, robot layout and task remain fixed.
-
-A seed is an integer that lets you recreate the same random choices. For example,
-to inspect seed 3 visually:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\relay_demo.py --seed 3
-```
-
-To evaluate a separate batch:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\evaluate_relay.py --start-seed 10 --seeds 10
-```
-
-Read `artifacts/relay_eval_0_10/summary.json` for the first batch's success rate,
-parameters and per-arm metrics. Each seed folder contains a stage log and result;
-failures retain their reason, elapsed simulation time and last object position.
-All requested trials are attempted even when a control check fails. The process
-returns exit code 1 if any trial fails. Rerunning the same batch replaces its report.
-
-Success requires both arms to grasp and carry the block, meet the 15 mm placement
-tolerance and release onto the table, with no detected inter-arm or arm-table
-penetration. This is a narrow robustness test of the scripted table relay using
-simulator feedback. It does not establish airborne hand-off success, visual
-generalization, a learned policy, or inference performance. Execution time here
-includes simulation and is not an OpenVINO benchmark.
-
-Initial seeds 0-9: **9/10 successful (90%)**. Seed 7 failed A's two-jaw grasp check
-at 5 simulated seconds; the lift was blocked. Successful final placement errors
-ranged from approximately 0.7 to 4.1 mm. This small batch identifies a grasp
-sensitivity to investigate; it is not a statistical guarantee of 90% reliability.
-
-## Ninth exercise: correct the donor pickup
-
-```powershell
-.\.venv\Scripts\python.exe scripts\relay_demo.py --seed 7
-```
-
-Arm A now measures the initial block XY offset, adjusts its skill poses through
-inverse kinematics, and moves to the corrected pregrasp before descending. Arm B
-still measures the block again after A places it. Each arm starts from the unchanged
-nominal plan, so A's correction cannot accidentally accumulate into B's correction.
-The terminal and JSON metrics expose the correction for each arm in the IK frame.
-B's XY correction has the opposite sign because its base is rotated 180 degrees.
-
-The former failing seed 7 now passes, with A's measured correction of about
-0.75 mm in X and 2.38 mm in Y. This is simulator-state feedback, not learned or
-camera-based perception. Contact checks and placement tolerances are unchanged.
-The corrected motion adds three seconds of pregrasp alignment for A.
-
-```powershell
-.\.venv\Scripts\python.exe scripts\evaluate_relay.py --seeds 20
-```
-
-This checks the original seeds 0-9 plus new seeds 10-19. Results are stored in
-`artifacts/relay_eval_0_20/summary.json`. The original baseline batch remains in
-`artifacts/relay_eval_0_10/` until that batch is rerun; its summary was also saved as
-`artifacts/relay_baseline_0_10.json` for comparison.
-
-Corrected controller results: **20/20 passed**, including all 10 original seeds and
-10 new seeds. Maximum final placement error was approximately 5.1 mm against the
-unchanged 15 mm tolerance. These results cover only the stated modest position,
-mass and friction variations; they do not establish general reliability.
+The existing [team proposal](TableSync_Team_Proposal.docx) records the earlier plan. This README and the experiment reports describe the current implementation and remaining work.
